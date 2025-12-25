@@ -47,9 +47,15 @@ ios/static_libs/
 *.onnx
 ai_model/
 
+# Keep .gitkeep files
+!.gitkeep
+
 # Claude Code
 CLAUDE.md
 .claude/
 
 # Scripts
 scripts/
+
+# Release assets (uploaded to GitHub Releases)
+release_assets/

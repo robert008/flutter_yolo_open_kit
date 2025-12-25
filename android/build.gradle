@@ -55,8 +55,8 @@ task downloadNativeLibraries {
     }
 }
 
-// Uncomment the following line to enable automatic download
-// preBuild.dependsOn downloadNativeLibraries
+// Enable automatic download of native libraries
+preBuild.dependsOn downloadNativeLibraries
 
 android {
     namespace = "com.example.flutter_yolo_open_kit"
