@@ -4,6 +4,10 @@
 
 A high-performance Flutter plugin for real-time object detection using YOLO models with ONNX Runtime.
 
+## Demo
+
+[![Demo Video](https://img.youtube.com/vi/_DlaOeWxHyw/0.jpg)](https://www.youtube.com/shorts/_DlaOeWxHyw)
+
 ## Features
 
 - **Multiple YOLO Models**: Support for YOLOX and PP-YOLOE+ models

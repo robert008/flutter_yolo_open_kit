@@ -1,7 +1,8 @@
 name: flutter_yolo_open_kit
-description: "A new Flutter project."
-version: 0.0.1
-homepage:
+description: "A commercial-friendly YOLO detector for Flutter, powered by YOLOX and PP-YOLOE+ (Apache 2.0)."
+version: 1.0.0
+homepage: https://github.com/robert008/flutter_yolo_open_kit
+repository: https://github.com/robert008/flutter_yolo_open_kit
 
 environment:
   sdk: ^3.7.2

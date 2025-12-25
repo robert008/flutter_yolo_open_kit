@@ -24,6 +24,40 @@ rootProject.allprojects {
 
 apply plugin: "com.android.library"
 
+// Pre-built native libraries configuration
+def jniLibsDir = file("src/main/jniLibs")
+def arm64Dir = file("src/main/jniLibs/arm64-v8a")
+def releaseVersion = "v1.0.0"
+def downloadUrl = "https://github.com/robert008/flutter_yolo_open_kit/releases/download/${releaseVersion}/android-jniLibs.zip"
+
+task downloadNativeLibraries {
+    doLast {
+        // Check if native libraries already exist
+        if (arm64Dir.exists() && file("${arm64Dir}/libonnxruntime.so").exists()) {
+            println "Android native libraries already exist"
+            return
+        }
+
+        println "Downloading Android native libraries..."
+        println "URL: ${downloadUrl}"
+
+        def zipFile = file("${buildDir}/jniLibs.zip")
+        zipFile.parentFile.mkdirs()
+
+        ant.get(src: downloadUrl, dest: zipFile, skipexisting: 'false')
+
+        jniLibsDir.mkdirs()
+        ant.unzip(src: zipFile, dest: file("src/main"))
+
+        zipFile.delete()
+
+        println "Android native libraries downloaded successfully"
+    }
+}
+
+// Uncomment the following line to enable automatic download
+// preBuild.dependsOn downloadNativeLibraries
+
 android {
     namespace = "com.example.flutter_yolo_open_kit"
 

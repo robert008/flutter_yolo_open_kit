@@ -1,13 +1,23 @@
 Pod::Spec.new do |s|
   s.name             = 'flutter_yolo_open_kit'
-  s.version          = '0.0.1'
+  s.version          = '1.0.0'
   s.summary          = 'YOLO object detection plugin for Flutter using ONNX Runtime'
-  s.homepage         = 'https://github.com/example/flutter_yolo_open_kit'
+  s.description      = <<-DESC
+A commercial-friendly YOLO detector for Flutter, powered by YOLOX and PP-YOLOE+ (Apache 2.0).
+Features: real-time object detection, multiple model support, Core ML acceleration.
+                       DESC
+  s.homepage         = 'https://github.com/robert008/flutter_yolo_open_kit'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Author' => 'author@example.com' }
+  s.author           = { 'Robert Chuang' => 'figo007007@gmail.com' }
   s.source           = { :path => '.' }
 
   s.source_files = 'Classes/**/*.{h,m}'
+  s.preserve_paths = 'download_frameworks.sh'
+
+  # Download frameworks before build
+  s.prepare_command = <<-CMD
+    ./download_frameworks.sh
+  CMD
 
   # Static libraries: user code + ONNX Runtime
   s.vendored_libraries = 'libflutter_yolo_open_kit.a', 'static_libs/libonnxruntime_complete.a'
