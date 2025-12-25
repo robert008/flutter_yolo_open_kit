@@ -7,6 +7,7 @@ BASE_URL="https://github.com/robert008/flutter_yolo_open_kit/releases/download/$
 # Check if frameworks already exist
 OPENCV_DIR="$SCRIPT_DIR/Frameworks/opencv2.framework"
 ONNXRUNTIME_LIB="$SCRIPT_DIR/static_libs/libonnxruntime_complete.a"
+PLUGIN_LIB="$SCRIPT_DIR/libflutter_yolo_open_kit.a"
 
 download_file() {
     local url=$1
@@ -24,7 +25,7 @@ download_file() {
 }
 
 # Download and extract ios-frameworks.zip if needed
-if [ ! -d "$OPENCV_DIR" ] || [ ! -f "$ONNXRUNTIME_LIB" ]; then
+if [ ! -d "$OPENCV_DIR" ] || [ ! -f "$ONNXRUNTIME_LIB" ] || [ ! -f "$PLUGIN_LIB" ]; then
     echo "Downloading iOS frameworks..."
     FRAMEWORKS_ZIP="$SCRIPT_DIR/ios-frameworks.zip"
     download_file "${BASE_URL}/ios-frameworks.zip" "$FRAMEWORKS_ZIP"
