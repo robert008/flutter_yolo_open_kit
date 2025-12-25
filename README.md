@@ -191,16 +191,31 @@ Models and pre-built native libraries are available in [GitHub Releases](https:/
 | `ppyoloe_plus_l.onnx` | PP-YOLOE+ Large model (200MB) |
 | `yolox_m.onnx` | YOLOX Medium model (97MB) |
 | `yolox_l.onnx` | YOLOX Large model (207MB) |
-| `ios-frameworks.zip` | iOS ONNX Runtime & OpenCV frameworks |
+| `ios-frameworks.zip` | iOS static libraries & frameworks |
 | `android-jniLibs.zip` | Android native libraries (.so) |
 
-### Setup
+### Native Libraries (Auto-Download)
 
-1. Download models from releases and place in your app's `assets/` folder
-2. For iOS: Extract `ios-frameworks.zip` to `ios/Frameworks/`
-3. For Android: Extract `android-jniLibs.zip` to `android/src/main/jniLibs/`
+Native libraries are **automatically downloaded** from GitHub Releases on first build:
 
-Models will be copied from assets to documents directory at runtime.
+- **iOS**: Downloads during `pod install`
+- **Android**: Downloads during Gradle build
+
+You can also manually trigger the download:
+
+```bash
+# iOS
+cd ios && ./download_frameworks.sh
+
+# Android
+cd android && ./gradlew downloadNativeLibraries
+```
+
+### Models Setup
+
+1. Download models from [GitHub Releases](https://github.com/robert008/flutter_yolo_open_kit/releases)
+2. Place in your app's `assets/` folder
+3. Models will be copied to documents directory at runtime
 
 ## Performance Tips
 
