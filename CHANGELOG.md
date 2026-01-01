@@ -1,3 +1,9 @@
+## 1.1.0
+
+* Add Linux platform support (x86_64 and aarch64)
+* Support for edge devices (Raspberry Pi, Jetson Nano)
+* Add GitHub Actions CI for Linux builds
+
 ## 1.0.0
 
 * Initial release
