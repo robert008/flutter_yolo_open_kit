@@ -12,7 +12,7 @@ A high-performance Flutter plugin for real-time object detection using YOLO mode
 
 - **Multiple YOLO Models**: Support for YOLOX and PP-YOLOE+ models
 - **Real-time Detection**: Optimized for camera stream processing
-- **Cross-platform**: iOS and Android support
+- **Cross-platform**: iOS, Android, and Linux support
 - **Hardware Acceleration**:
   - iOS: Core ML integration
   - Android: NNAPI support
@@ -143,7 +143,7 @@ final result = await yoloService.detectFromYuv(
 
 ### iOS
 
-The plugin uses a pre-built static library. No additional setup required.
+The plugin uses pre-built static libraries. No additional setup required.
 
 **Minimum iOS version**: 12.0
 
@@ -153,17 +153,23 @@ The plugin includes pre-built native libraries for arm64-v8a and armeabi-v7a.
 
 **Minimum SDK version**: 24
 
-Add to `android/app/build.gradle`:
+### Linux
 
-```gradle
-android {
-    defaultConfig {
-        ndk {
-            abiFilters 'arm64-v8a', 'armeabi-v7a'
-        }
-    }
-}
+Install OpenCV development libraries:
+
+```bash
+# Ubuntu/Debian
+sudo apt install libopencv-dev
+
+# Fedora
+sudo dnf install opencv-devel
+
+# Then download ONNX Runtime
+cd linux
+./download_libs.sh
 ```
+
+**Supported architectures**: x86_64, aarch64 (Raspberry Pi, Jetson)
 
 ## Building from Source
 
@@ -177,6 +183,14 @@ cd ios
 ### Android Native Library
 
 The Android library is built automatically by Gradle using CMake.
+
+### Linux
+
+```bash
+cd linux
+./download_libs.sh
+flutter build linux
+```
 
 ## Model & Library Downloads
 
