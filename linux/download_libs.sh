@@ -53,7 +53,10 @@ if [ ! -f "$LIBS_DIR/lib/libonnxruntime.so" ]; then
         # Move files to libs directory
         EXTRACTED_DIR="$SCRIPT_DIR/onnxruntime-linux-${ONNXRUNTIME_ARCH}-${ONNXRUNTIME_VERSION}"
         cp -r "$EXTRACTED_DIR/lib/"* "$LIBS_DIR/lib/"
-        cp -r "$EXTRACTED_DIR/include/"* "$LIBS_DIR/include/"
+
+        # Create onnxruntime subdirectory for headers (code uses #include <onnxruntime/...>)
+        mkdir -p "$LIBS_DIR/include/onnxruntime"
+        cp -r "$EXTRACTED_DIR/include/"* "$LIBS_DIR/include/onnxruntime/"
 
         # Cleanup
         rm -rf "$EXTRACTED_DIR"
