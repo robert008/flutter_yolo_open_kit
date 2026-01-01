@@ -1,3 +1,7 @@
+## 1.1.1
+
+* Fix Linux build: correct ONNX Runtime header include path
+
 ## 1.1.0
 
 * Add Linux platform support (x86_64 and aarch64)
