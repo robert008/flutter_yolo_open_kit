@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -6,9 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_yolo_open_kit/flutter_yolo_open_kit.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -141,6 +145,34 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _pickAndDetectVideo() async {
+    if (!_yolo.isInitialized) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Model not loaded yet')),
+      );
+      return;
+    }
+
+    const typeGroup = XTypeGroup(
+      label: 'Videos',
+      extensions: ['mp4', 'avi', 'mov', 'mkv', 'webm'],
+      mimeTypes: ['video/mp4', 'video/avi', 'video/quicktime', 'video/x-matroska', 'video/webm'],
+    );
+
+    final file = await openFile(acceptedTypeGroups: [typeGroup]);
+    if (file != null && mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VideoDetectionPage(
+            videoPath: file.path,
+            confidenceThreshold: _confidenceThreshold,
+          ),
+        ),
+      );
+    }
+  }
+
   void _showModelSelector() {
     showModalBottomSheet(
       context: context,
@@ -242,24 +274,53 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 32),
 
-                // Main action button
-                SizedBox(
-                  height: 120,
-                  child: ElevatedButton.icon(
-                    onPressed: _yolo.isInitialized && !_isLoading
-                        ? _pickAndDetectImage
-                        : null,
-                    icon: const Icon(Icons.image, size: 32),
-                    label: const Text(
-                      'Select Image',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                // Main action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 100,
+                        child: ElevatedButton.icon(
+                          onPressed: _yolo.isInitialized && !_isLoading
+                              ? _pickAndDetectImage
+                              : null,
+                          icon: const Icon(Icons.image, size: 28),
+                          label: const Text(
+                            'Image',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: SizedBox(
+                        height: 100,
+                        child: ElevatedButton.icon(
+                          onPressed: _yolo.isInitialized && !_isLoading
+                              ? _pickAndDetectVideo
+                              : null,
+                          icon: const Icon(Icons.videocam, size: 28),
+                          label: const Text(
+                            'Video',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepPurple,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 32),
@@ -581,6 +642,376 @@ class DetectionPainter extends CustomPainter {
         style: const TextStyle(
           color: Colors.white,
           fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+
+      double labelY = rect.top - textPainter.height - 4;
+      if (labelY < offsetY) labelY = rect.top + 4;
+
+      final labelRect = Rect.fromLTWH(
+        rect.left,
+        labelY,
+        textPainter.width + 8,
+        textPainter.height + 4,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(labelRect, const Radius.circular(4)),
+        bgPaint,
+      );
+      textPainter.paint(canvas, Offset(rect.left + 4, labelY + 2));
+    }
+  }
+
+  Color _getColorForClass(int classId) {
+    final colors = [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.orange,
+      Colors.purple,
+      Colors.cyan,
+      Colors.pink,
+      Colors.teal,
+      Colors.amber,
+      Colors.indigo,
+    ];
+    return colors[classId % colors.length];
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// Video Detection Page
+class VideoDetectionPage extends StatefulWidget {
+  final String videoPath;
+  final double confidenceThreshold;
+
+  const VideoDetectionPage({
+    super.key,
+    required this.videoPath,
+    required this.confidenceThreshold,
+  });
+
+  @override
+  State<VideoDetectionPage> createState() => _VideoDetectionPageState();
+}
+
+class _VideoDetectionPageState extends State<VideoDetectionPage> {
+  final _yolo = FlutterYoloOpenKit.instance;
+  late final Player _player;
+  late final VideoController _controller;
+
+  List<YoloDetection> _detections = [];
+  int _inferenceTimeMs = 0;
+  bool _isProcessing = false;
+  Timer? _detectionTimer;
+  Size? _videoSize;
+  String? _tempFramePath;
+
+  @override
+  void initState() {
+    super.initState();
+    _player = Player();
+    _controller = VideoController(_player);
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    // Get temp directory for frame extraction
+    final tempDir = await getTemporaryDirectory();
+    _tempFramePath = '${tempDir.path}/yolo_frame.jpg';
+
+    // Open video
+    await _player.open(Media(widget.videoPath));
+
+    // Wait for video to load and get size
+    _player.stream.width.listen((width) {
+      if (width != null && _videoSize == null) {
+        _player.stream.height.first.then((height) {
+          if (height != null && mounted) {
+            setState(() {
+              _videoSize = Size(width.toDouble(), height.toDouble());
+            });
+          }
+        });
+      }
+    });
+
+    // Start detection timer (process every 100ms)
+    _detectionTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      _processFrame();
+    });
+  }
+
+  Future<void> _processFrame() async {
+    if (_isProcessing || !_player.state.playing) return;
+    if (_tempFramePath == null) return;
+
+    _isProcessing = true;
+
+    try {
+      // Capture current frame using screenshot
+      final screenshot = await _player.screenshot();
+      if (screenshot != null && mounted) {
+        // Save screenshot to temp file
+        await File(_tempFramePath!).writeAsBytes(screenshot);
+
+        // Run detection
+        final result = _yolo.detectFromPath(
+          _tempFramePath!,
+          confThreshold: widget.confidenceThreshold,
+          iouThreshold: 0.45,
+        );
+
+        if (mounted && !result.hasError) {
+          setState(() {
+            _detections = result.detections;
+            _inferenceTimeMs = result.inferenceTimeMs;
+          });
+        }
+      }
+    } catch (e) {
+      // Ignore frame capture errors
+    }
+
+    _isProcessing = false;
+  }
+
+  @override
+  void dispose() {
+    _detectionTimer?.cancel();
+    _player.dispose();
+    // Clean up temp file
+    if (_tempFramePath != null) {
+      File(_tempFramePath!).delete().catchError((_) {});
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Video Detection'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Text(
+                '${_detections.length} objects | ${_inferenceTimeMs}ms',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Row(
+        children: [
+          // Video with detections
+          Expanded(
+            flex: 2,
+            child: Container(
+              color: Colors.black,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Video player
+                      Center(
+                        child: Video(
+                          controller: _controller,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      // Detection overlay
+                      if (_videoSize != null)
+                        CustomPaint(
+                          painter: VideoDetectionPainter(
+                            detections: _detections,
+                            videoWidth: _videoSize!.width,
+                            videoHeight: _videoSize!.height,
+                            containerWidth: constraints.maxWidth,
+                            containerHeight: constraints.maxHeight,
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+
+          // Detection list
+          SizedBox(
+            width: 280,
+            child: Column(
+              children: [
+                // Playback controls
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.replay_10),
+                        onPressed: () {
+                          final pos = _player.state.position;
+                          _player.seek(pos - const Duration(seconds: 10));
+                        },
+                      ),
+                      StreamBuilder<bool>(
+                        stream: _player.stream.playing,
+                        builder: (context, snapshot) {
+                          final playing = snapshot.data ?? false;
+                          return IconButton(
+                            iconSize: 48,
+                            icon: Icon(playing ? Icons.pause_circle : Icons.play_circle),
+                            onPressed: () => _player.playOrPause(),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.forward_10),
+                        onPressed: () {
+                          final pos = _player.state.position;
+                          _player.seek(pos + const Duration(seconds: 10));
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                // Detection list
+                Expanded(
+                  child: _detections.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No objects detected',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(8),
+                          itemCount: _detections.length,
+                          itemBuilder: (context, index) {
+                            final det = _detections[index];
+                            return Card(
+                              child: ListTile(
+                                dense: true,
+                                leading: CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: _getColorForClass(det.classId),
+                                  child: Text(
+                                    '${det.classId}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                                title: Text(det.className),
+                                trailing: Text(
+                                  '${(det.confidence * 100).toInt()}%',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getColorForClass(int classId) {
+    final colors = [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.orange,
+      Colors.purple,
+      Colors.cyan,
+      Colors.pink,
+      Colors.teal,
+      Colors.amber,
+      Colors.indigo,
+    ];
+    return colors[classId % colors.length];
+  }
+}
+
+// Video Detection Painter
+class VideoDetectionPainter extends CustomPainter {
+  final List<YoloDetection> detections;
+  final double videoWidth;
+  final double videoHeight;
+  final double containerWidth;
+  final double containerHeight;
+
+  VideoDetectionPainter({
+    required this.detections,
+    required this.videoWidth,
+    required this.videoHeight,
+    required this.containerWidth,
+    required this.containerHeight,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final videoAspect = videoWidth / videoHeight;
+    final containerAspect = containerWidth / containerHeight;
+
+    double displayWidth, displayHeight;
+    if (videoAspect > containerAspect) {
+      displayWidth = containerWidth;
+      displayHeight = containerWidth / videoAspect;
+    } else {
+      displayHeight = containerHeight;
+      displayWidth = containerHeight * videoAspect;
+    }
+
+    final scale = displayWidth / videoWidth;
+    final offsetX = (containerWidth - displayWidth) / 2;
+    final offsetY = (containerHeight - displayHeight) / 2;
+
+    final boxPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+
+    final bgPaint = Paint()..style = PaintingStyle.fill;
+
+    for (final det in detections) {
+      final color = _getColorForClass(det.classId);
+      boxPaint.color = color;
+      bgPaint.color = color.withOpacity(0.8);
+
+      final rect = Rect.fromLTRB(
+        det.x1 * scale + offsetX,
+        det.y1 * scale + offsetY,
+        det.x2 * scale + offsetX,
+        det.y2 * scale + offsetY,
+      );
+
+      canvas.drawRect(rect, boxPaint);
+
+      final label = '${det.className} ${(det.confidence * 100).toInt()}%';
+      final textSpan = TextSpan(
+        text: label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
       );
