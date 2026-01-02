@@ -46,6 +46,7 @@ dependencies:
   path_provider: ^2.1.2
   camera: ^0.11.0+2
   ffi: ^2.1.0
+  file_selector: ^1.0.3
 
 dev_dependencies:
   flutter_test:
