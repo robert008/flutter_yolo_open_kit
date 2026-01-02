@@ -124,6 +124,7 @@ class _HomePageState extends State<HomePage> {
     const typeGroup = XTypeGroup(
       label: 'Images',
       extensions: ['jpg', 'jpeg', 'png', 'bmp'],
+      mimeTypes: ['image/jpeg', 'image/png', 'image/bmp'],
     );
 
     final file = await openFile(acceptedTypeGroups: [typeGroup]);
