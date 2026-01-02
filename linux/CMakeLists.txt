@@ -50,25 +50,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 set_target_properties(${PROJECT_NAME} PROPERTIES
     OUTPUT_NAME "flutter_yolo_open_kit"
     CXX_VISIBILITY_PRESET hidden
-)
-
-# Set bundled library install location (relative, not absolute)
-set_target_properties(${PROJECT_NAME} PROPERTIES
     INSTALL_RPATH "$ORIGIN"
 )
 
-# Install the library - use BUNDLE_LIB_DIR set by Flutter, or fallback
-if(DEFINED INSTALL_BUNDLE_LIB_DIR)
-    install(TARGETS ${PROJECT_NAME}
-        LIBRARY DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
-    )
-    install(FILES "${ONNXRUNTIME_DIR}/lib/libonnxruntime.so"
-        DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
-        OPTIONAL
-    )
-else()
-    # Standalone build - install to build directory
-    install(TARGETS ${PROJECT_NAME}
-        LIBRARY DESTINATION "${CMAKE_BINARY_DIR}"
-    )
-endif()
+# For Flutter FFI plugins, set the bundled libraries variable
+# This tells Flutter which libraries to bundle with the app
+set(flutter_yolo_open_kit_bundled_libraries
+    "$<TARGET_FILE:${PROJECT_NAME}>"
+    "${ONNXRUNTIME_DIR}/lib/libonnxruntime.so"
+    PARENT_SCOPE
+)
