@@ -52,14 +52,23 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_VISIBILITY_PRESET hidden
 )
 
-# Install the library
-set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
-install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+# Set bundled library install location (relative, not absolute)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
 )
 
-# Copy ONNX Runtime library to bundle
-install(FILES "${ONNXRUNTIME_DIR}/lib/libonnxruntime.so"
-    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
-    OPTIONAL
-)
+# Install the library - use BUNDLE_LIB_DIR set by Flutter, or fallback
+if(DEFINED INSTALL_BUNDLE_LIB_DIR)
+    install(TARGETS ${PROJECT_NAME}
+        LIBRARY DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    )
+    install(FILES "${ONNXRUNTIME_DIR}/lib/libonnxruntime.so"
+        DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+        OPTIONAL
+    )
+else()
+    # Standalone build - install to build directory
+    install(TARGETS ${PROJECT_NAME}
+        LIBRARY DESTINATION "${CMAKE_BINARY_DIR}"
+    )
+endif()
